@@ -1,0 +1,7 @@
+[alpha]
+git-tree-sha1 = "eb3b9e4653adc60e89e35396f3768505106b866e"
+lazy = true
+
+    [[alpha.download]]
+    url = "https://github.com/thennen/Synaptogen/archive/refs/tags/v0.1.0-synaptogen_params_eb3b9e.tar.gz"
+    sha256 = "7a95137988cdc8991ab0f9c1493ebcba85ba690f603242b4732b312a86f7323a"

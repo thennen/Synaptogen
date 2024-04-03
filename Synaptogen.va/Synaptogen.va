@@ -1,0 +1,390 @@
+`include "constants.vams"
+`include "disciplines.vams"
+
+module StochasticSynapse (In,Out);
+	
+
+	parameter real muDtD[0:23] = {4.871081, -0.6775106, 4581.818, 0.7338738, 0.189144, 0.06022718, 205.2458, 0.03642964, 4.891825, -0.6699412, 4482.33, 0.7270518, 0.1870039, 0.05970367, 150.0, 0.03176714, 4.821818, -0.7971979, 4830.314, 0.8185899, 0.2064958, 0.1172464, 271.3609, 0.06151604}; 
+	parameter real LDtD[0:191] = {0.0592141, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -0.01059994, 0.02209577, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 2.106818, -51.61276, 168.3492, 0.0, 0.0, 0.0, 0.0, 0.0, 0.001405968, -0.00782516, 0.01467373, 0.0164519, 0.0, 0.0, 0.0, 0.0, 0.003215007, -0.002408224, 0.004868577, -0.001576913, 0.01385613, 0.0, 0.0, 0.0, 0.004424469, -0.004083446, -0.002040311, 0.001359785, 0.001262655, 0.00420263, 0.0, 0.0, 4.863433, -0.1671709, 23.28969, 9.941011, 2.57367, 7.319351, 35.43322, 0.0, 0.0006694523, -0.000604616, 0.0008057083, 0.0002566795, 0.001323565, 0.0001388387, -0.0007870998, 0.005050363, 0.07526959, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -0.01658903, 0.02629331, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -4.874557, -42.28922, 153.8768, 0.0, 0.0, 0.0, 0.0, 0.0, -0.003444414, -0.01218719, 0.008943943, 0.01861548, 0.0, 0.0, 0.0, 0.0, 0.006542197, 0.001200574, 0.005256783, -0.001140489, 0.01432147, 0.0, 0.0, 0.0, 0.005731649, -0.005338727, -0.001623453, 0.001980228, -0.0001382172, 0.004759829, 0.0, 0.0, 2.785636, -9.788157, 15.07259, 7.804429, -1.807608, 4.361409, 17.6321, 0.0, 0.0002829829, -0.0006279302, 0.0004817469, 0.0004474841, 0.0007909879, -0.0002130465, 0.001083694, 0.003049975, 0.0713319, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.04338905, 0.05514702, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -40.79742, 21.03814, 138.8119, 0.0, 0.0, 0.0, 0.0, 0.0, -0.02857856, -0.03015839, 0.006451396, 0.01375437, 0.0, 0.0, 0.0, 0.0, -0.01419303, 0.0007610265, 0.01165004, -0.01754957, 0.03180421, 0.0, 0.0, 0.0, 2.672811e-05, -0.004813454, 0.005328878, -0.02108675, 0.009433057, 0.01962559, 0.0, 0.0, -30.89008, 41.35723, 5.975232, -45.88639, 43.69746, -4.389913, 45.49313, 0.0, -0.004934345, 0.005774852, 0.005859575, -0.01044363, 0.00926844, 0.0130001, -0.002593403, 0.007247026};
+	parameter real GammaCoeff[0:19] = {0.009334871, 0.03705315, -0.02767006, 0.88943, 0.0003113562, 0.0005932355, 0.0104504, -0.1172058, 0.985121, 0.1154597, 0.007714282, 0.03792738, 0.05287361, 0.8841892, -0.07549211, -0.000220469, 0.0142836, 0.03306252, 1.013607, -0.03228282};
+	parameter real VAR_L[0:15] = {0.9667997, 0.0, 0.0, 0.0, -0.2108333, 0.9278702, 0.0, 0.0, 0.01195329, -0.02156934, 0.7799085, 0.0, -0.001335056, -0.0005534608, 0.0798593, 0.8677429};	
+	parameter real VAR_An[0:159] = {0.07751362, -0.01067374, 0.02446714, -0.003073626, -0.001241024, 0.09469494, -0.01615677, -0.009311911, 0.003078102, -0.005486052, 0.2223499, 0.007581831, -0.002244528, -0.003468946, 0.008179708, 0.1201594, 0.0629639, -0.005149193, 0.01143868, -0.00644487, -0.002643117, 0.07271417, -0.007892307, -0.003680725, 0.004210333, -0.001572112, 0.1369148, 0.001646978, -0.003191202, -0.004360784, 0.004859799, 0.09358582, 0.05782694, -0.004035763, 0.007746598, -0.00492476, -0.001217986, 0.06553013, -0.001950881, -0.005658557, -0.0004254667, -0.002344517, 0.1090097, 0.0009398293, -0.004188048, -0.005168074, 0.004958531, 0.08520874, 0.05164607, -0.003462885, 0.005530136, -0.005357901, -0.001264818, 0.05909557, -0.001871803, -0.004613438, -0.0004479238, -0.002128485, 0.07417443, 0.002845189, -0.003058081, -0.004046396, 0.002571576, 0.07671887, 0.04917661, -0.002005457, 0.001241251, -0.003642917, -0.001459583, 0.05502455, -0.0008108941, -0.004380882, 0.001199985, 3.514013e-05, 0.06455476, 0.004060536, -0.003178635, -0.004655277, 0.003635617, 0.0699194, 0.047, -0.001608932, 0.002900113, -0.004280374, -0.0003721558, 0.05256988, 0.001071584, -0.003145922, -0.001656914, -0.0006012264, 0.05898738, 0.002940845, -0.003715397, -0.003899672, 0.003646663, 0.06715798, 0.04481781, -0.001993789, -0.002008743, -0.001694294, -0.001536383, 0.05067187, 0.000815477, -0.005151641, -0.0006434086, 0.0008938546, 0.04033983, 0.006053149, -0.003305012, -0.005160427, 0.005003775, 0.06438487, 0.04514433, -0.001960009, -0.002253849, -0.003398883, -0.0004499308, 0.05028533, 0.001153251, -0.005273104, 0.0007772193, 0.0001044945, 0.04302871, 0.006114938, -0.003962494, -0.0058383, 0.004813284, 0.06241596, 0.04310825, -0.002944886, -0.000430252, -0.00302678, -0.0009049013, 0.05014229, 0.003874527, -0.00462675, -0.00102453, 0.0001449924, 0.04167309, 0.005859156, -0.004848508, -0.004744061, 0.005647986, 0.06249182, 0.04367398, -0.00250288, -0.004116167, -0.00331429, -0.00108918, 0.04947431, -8.176504e-06, -0.003381784, 0.00317311, 0.0004248366, 0.04701568, 0.005237257, -0.005106267, -0.005614372, 0.007130087, 0.06485378};
+	parameter real HHRS[0:6] = {0.0,5.11099449e-06,-4.54652352e-06,1.53225875e-05,-4.13402968e-06,-3.29897627e-05,0.0};
+	parameter real LLRS[0:6] = {-1.32798933e-05,-9.90833144e-06,3.36209572e-05,-1.6407316e-05,2.20625364e-05,0.000265041905,0.0};
+	parameter real wk[0:2] = {0.483732,0.4742247,0.04204324};
+	
+	parameter real eta = 3.0567;
+	parameter real Umax = 1.46;
+	parameter integer p = 10;
+	parameter real tcycle = 1;
+	parameter real U0 = 0.2;
+
+	real epsilon[0:23] = '{24{0.0}};
+	real s[0:7]  = '{8{0.0}};
+	real muCtC[0:3] = {0.0,0.0,0.0,0.0};
+	real sigmaCtC[0:3] = {0.0,0.0,0.0,0.0};
+	real History[0:39] = '{40{0.0}};
+	real tran_pol3[0:2] = {0.0,0.0,0.0};
+	real x[0:3] = {0.0,0.0,0.0,0.0};
+	real y[0:3] = {0.0,0.0,0.0,0.0};
+	
+	real y1,y2,polyval_L,polyval_H,temp_r,temp_I,Ua;
+	real U_S,U_R,R_H,R_L,r,UR,G_LLRS,G_HHRS;
+	integer in_LRS,full,n;
+	real s1,s2,s3,s4,s5,s6,s7,s8;
+
+	parameter integer initialized = 0;
+	parameter integer Initialseed = 12345;
+	integer seed = Initialseed;
+
+	real dummy;
+	real nextSet, noReset, nextReset;
+	electrical In,Out;
+
+	analog function saveStates;
+	//Input/Output Matrix X saves cell history (last 10 states with 4 params (RH,RL,US,UR) = 40 entries)
+	//Append Vector with 4 entries (current state) in Matrix at specific position
+		inout [0:39] matrix;
+		input [0:3] vector;
+		input n;
+		real matrix[0:39], vector[0:3];
+		integer n,pos,i;
+
+		begin
+			pos = (n % p);
+			for(i = 0; i < 3; i = i +1)
+			begin
+				matrix[pos+i] = vector[i];
+			end
+		end
+	endfunction
+
+	analog function real DtDMatrix;
+	//Input 3 8x1 Vectors e
+	//Output 8x1 Vector y
+	//Computes y = muDtD + LDtD*e
+		input [0:23] e;
+		output [0:7] y;
+		real e[0:23],c,y[0:7],x[0:23];
+		integer i,j,k,n;
+
+		begin 
+			for(k = 0; k < 3; k = k + 1) begin
+				for(i = 0; i < 8; i = i + 1) begin
+					c = muDtD[i+k*8];
+					for(j = 0; j < 8; j = j + 1) begin
+						c =  c + LDtD[i*8 + j + k*64]*e[j+k*8];
+					end
+					x[i+k*8] = c;
+				end
+			end
+			for(n = 0; n < 8; n = n + 1) begin
+				y[n] = wk[0]*x[n] + wk[1]*x[n+8] + wk[2]*x[n+16];
+			end
+		end
+	endfunction
+
+	analog function real hadamardProductandAddition;
+	//Input 4x1 Vector a
+	//Input 4x1 Vector x
+	//Input 4x1 Vector b
+	//Output 4x1 Vector y
+	//Computes y = a + b.*x with .* as element-wise Hadamard-Product
+		input [0:3] a;
+		input [0:3] b;
+		input  [0:3] x;
+		output [0:3] y;
+		real a[0:3], b[0:3], x[0:3], y[0:3];
+		integer i;
+
+		begin
+			for(i = 0; i < 4; i = i + 1) begin
+				y[i] = a[i] + (x[i] * b[i]);
+			end
+		end
+	endfunction
+
+	analog function real transitionParabola;
+		input x1,y1,y2;
+		inout [0:2]coeff;
+		real x1,y1,y2,coeff[0:2],x2,den;
+		begin
+			x2 = Umax;
+			coeff[1] = x2;
+			coeff[2] = y2;  
+			den = $pow((x2-x1),eta);
+			coeff[0] = (y1-y2)/den;
+		end
+	endfunction
+
+	analog function real polyvalDegree;
+		input [0:2] coeff;
+		input x;
+		output c;
+		real coeff[0:2], x, c;
+		begin
+			c = coeff[0]*$pow((coeff[1]-x),eta) + coeff[2];
+		end
+	endfunction
+
+	analog function real polyval;
+		input [0:6] coeff;
+		input x;
+		output c;
+		real coeff[0:6], x, c;
+		integer i;
+
+		begin
+			c = 0;
+			for(i = 0; i < 7; i = i + 1) begin
+				c = c*x + coeff[i];
+			end
+		end
+	endfunction
+
+	analog function real gammainv;
+		input [0:3] x;
+		output [0:3] y;
+		real x[0:3], y[0:3], c;
+		integer i,j;
+		
+		begin
+			for(i = 0; i < 4; i = i + 1) begin
+				c = 0;
+				for(j = 0; j < 5; j = j + 1) begin
+					c = c*x[i] + GammaCoeff[i*5+j];
+				end
+				y[i] = c;
+			end
+		end
+	endfunction
+
+	analog function real VARsample;
+		inout [0:3] x;
+		input [0:39] X;
+		input n;
+		real x[0:3], c, X[0:39];
+		integer n,pos,i,j,k;
+
+		begin
+			for(pos = 0; pos < 10; pos = pos + 1) begin
+				k = ( ( (n - pos) % 3) + 3) % 3;
+				for(i = 0; i < 4; i = i + 1) begin
+					c = 0;
+					for(j = 0; j < 4; j = j + 1) begin
+						c =  c + VAR_An[i*4 + j + pos*16]*X[j+k*4];
+					end
+					x[i] = x[i] +  c;
+				end
+			end
+		end
+	endfunction
+
+	analog function real matrmult;
+		input [0:3] x;
+		input [0:15] M;
+		output [0:3] y;
+		real x[0:3], c,y[0:3], M[0:15];
+		integer i,j;
+
+		begin 
+			for(i = 0; i < 4; i = i + 1) begin
+				c = 0;
+				for(j = 0; j < 4; j = j + 1) begin
+					c =  c + M[i*4 + j]*x[j];
+				end
+				y[i] = c;
+			end
+		end
+	endfunction
+
+	analog function real calcr;
+		input R;
+		input G_LLRS;
+		input G_HHRS;
+		output r;
+		real R,r,G_LLRS,G_HHRS;
+
+		begin
+			r = (G_LLRS - 1/R) / (G_LLRS - G_HHRS);
+		end
+	endfunction
+
+	analog initial begin
+		in_LRS = 0;
+		n = 0;
+		full = 0;
+		UR = 0;
+		temp_r = 0;
+		epsilon[0] = $rdist_normal(seed,0,1); epsilon[1] = $rdist_normal(seed,0,1); 	epsilon[2] = $rdist_normal(seed,0,1);
+		epsilon[3] = $rdist_normal(seed,0,1); 	epsilon[4] = $rdist_normal(seed,0,1); epsilon[5] = $rdist_normal(seed,0,1);
+		epsilon[6] = $rdist_normal(seed,0,1); epsilon[7] = $rdist_normal(seed,0,1); epsilon[8] = $rdist_normal(seed,0,1);
+		epsilon[9] = $rdist_normal(seed,0,1); epsilon[10] = $rdist_normal(seed,0,1); epsilon[11] = $rdist_normal(seed,0,1);
+		epsilon[12] = $rdist_normal(seed,0,1); epsilon[13] = $rdist_normal(seed,0,1); epsilon[14] = $rdist_normal(seed,0,1);
+		epsilon[15] = $rdist_normal(seed,0,1); epsilon[16] = $rdist_normal(seed,0,1); epsilon[17] = $rdist_normal(seed,0,1);
+		epsilon[18] = $rdist_normal(seed,0,1); epsilon[19] = $rdist_normal(seed,0,1); epsilon[20] = $rdist_normal(seed,0,1);
+		epsilon[21] = $rdist_normal(seed,0,1); epsilon[22] = $rdist_normal(seed,0,1); epsilon[23] = $rdist_normal(seed,0,1);
+		dummy = DtDMatrix(epsilon,s);
+
+		dummy = polyval(LLRS,U0,G_LLRS);
+		dummy = polyval(HHRS,U0,G_HHRS);
+		G_HHRS = G_HHRS/U0;
+		G_LLRS = G_LLRS/U0;
+
+		muCtC[0] = s[0];
+		muCtC[1] = s[1];
+		muCtC[2] = s[2];
+		muCtC[3] = s[3];
+		sigmaCtC[0] = s[4];
+		sigmaCtC[1] = s[5];	
+		sigmaCtC[2] = s[6];
+		sigmaCtC[3] = s[7];
+
+		x[0] = $rdist_normal(seed,0,1);
+		x[1] = $rdist_normal(seed,0,1);
+		x[2] = $rdist_normal(seed,0,1);
+		x[3] = $rdist_normal(seed,0,1);
+
+		dummy = matrmult(x,VAR_L,x);
+		dummy = saveStates(History,x,n);
+		dummy = gammainv(x,x);
+		dummy = hadamardProductandAddition(muCtC,x,sigmaCtC,y);
+		R_H = $pow(10,y[0]);
+		U_S = y[1];
+		R_L = y[2];
+		U_R = y[3];
+		UR = U_R;
+
+		if (initialized == 0)
+		begin
+			in_LRS = 0;
+			dummy = calcr(R_H,G_LLRS,G_HHRS,r);
+		end
+		else
+		begin
+			in_LRS = 1;
+			dummy = calcr(R_L,G_LLRS,G_HHRS,r);
+		end
+
+	end
+	
+	analog begin
+		
+		s1 = s[0];
+		s2 = s[1];
+		s3 = s[2];
+		s4 = s[3];
+		s5 = s[4];
+		s6 = s[5];	
+		s7 = s[6];
+		s8 = s[7];
+		Ua = V(In,Out);
+		//Stepsize control near RESET or SET Transitions
+		@(cross((U_S-0.02)+ Ua, -1)) begin
+			nextSet = $abstime + tcycle/100;
+		end
+		@(timer(nextSet)) begin
+			nextSet = $abstime + 100;
+		end
+
+		@(cross(Ua - (U_R-0.02), +1)) begin
+				nextReset = $abstime + tcycle/100;
+				noReset = 1;
+		end
+		@(timer(nextReset)) begin
+			if (noReset >= 1) begin
+				if (noReset < 15) begin
+					nextReset = $abstime + tcycle/100;
+					noReset = noReset + 1;
+				end
+				else begin
+					nextReset = $abstime + 100;
+					noReset = 0;
+				end
+			end
+		end
+
+		if (in_LRS == 0) 
+		begin //in_LRS == 0
+			if (Ua < 1*U_S)
+			begin // (Ua < -1*U_S)
+				dummy = calcr(R_L,G_LLRS,G_HHRS,r);
+				in_LRS = 1;
+				UR = U_R;
+			end // (Ua < -1*U_S) 
+		end //in_LRS == 0
+
+		if (Ua > UR)
+		begin // (Ua > U_R)
+			if (Ua >= Umax)
+			begin // (Ua >= Umax)
+				full = 1;
+			end   // (Ua >= Umax)
+			else
+			begin // else (Ua >= Umax)  
+				full = 0;
+			end // else (Ua >= Umax)  
+
+			if (in_LRS == 1)
+			begin // (in_LRS == 1)
+				in_LRS = 0;
+				x[0] = $rdist_normal(seed,0,1);
+				x[1] = $rdist_normal(seed,0,1);
+				x[2] = $rdist_normal(seed,0,1);
+				x[3] = $rdist_normal(seed,0,1);
+	
+				dummy = matrmult(x,VAR_L,x);
+				dummy = VARsample(x,History,n);
+				n = n + 1;
+				dummy = saveStates(History,x,n);
+				if (full == 1)
+				begin // (full == 1)
+					dummy = gammainv(x,x);
+					dummy = hadamardProductandAddition(muCtC,x,sigmaCtC,y);
+					R_H = $pow(10,y[0]);
+					U_S = y[1];
+					R_L = y[2];
+					U_R = y[3];
+				end // (full == 1)
+				else
+				begin // else (full == 1)
+					dummy = polyval(LLRS,UR,polyval_L);
+					dummy = polyval(HHRS,UR,polyval_H);
+					y1 = (1-r)*polyval_L + r*polyval_H;
+
+					dummy = gammainv(x,x);
+					dummy = hadamardProductandAddition(muCtC,x,sigmaCtC,y);
+					dummy = polyval(LLRS,Umax,polyval_L);
+					dummy = polyval(HHRS,Umax,polyval_H);
+
+					R_H = $pow(10,y[0]);
+					U_S = y[1];
+					R_L = y[2];
+					U_R = y[3];
+
+					dummy = calcr(R_H,G_LLRS,G_HHRS,temp_r);
+					y2 = (1-temp_r)*polyval_L + temp_r*polyval_H;
+					dummy = transitionParabola(UR,y1,y2,tran_pol3);
+				end // else (full == 1)
+			end // (in_LRS == 1)
+			if (full == 1)
+			begin // (full == 1)
+				dummy = calcr(R_H,G_LLRS,G_HHRS,r);
+				//in_HRS = 1;
+				UR = Umax;
+			end // (full == 1)
+			else 
+			begin // else (full == 1)
+				dummy = polyvalDegree(tran_pol3,Ua,temp_I);
+				dummy = polyval(LLRS,Ua,polyval_L);
+				dummy = polyval(HHRS,Ua,polyval_H);
+				r = (temp_I - polyval_L) / (polyval_H - polyval_L);
+				UR = Ua;
+			end // else (full == 1)
+		end // (Ua > U_R)
+
+		dummy = polyval(LLRS,Ua,polyval_L);
+		dummy = polyval(HHRS,Ua,polyval_H);
+		I(In,Out) <+ (1-r)*polyval_L + r*polyval_H;
+	end
+endmodule
