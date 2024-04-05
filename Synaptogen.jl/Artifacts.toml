@@ -4,4 +4,4 @@ lazy = true
 
     [[alpha.download]]
     url = "https://github.com/thennen/Synaptogen/archive/refs/tags/v0.1.0-synaptogen_params_eb3b9e.tar.gz"
-    sha256 = "7a95137988cdc8991ab0f9c1493ebcba85ba690f603242b4732b312a86f7323a"
+    sha256 = "529be28f4cb5155196aac724a3012c66c13169b7e4ad0d5ae18460b27f4ed83b"
