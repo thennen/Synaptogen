@@ -15,11 +15,11 @@ It is currently implemented in
 
 ## Publications
 
-You can learn more about this model in the following publications:
+You can learn more about the model in the following publications:
 
-*A high throughput generative vector autoregression model for stochastic synapses*: [Frontiers](https://www.frontiersin.org/journals/neuroscience/articles/10.3389/fnins.2022.941753/full), [arXiv](https://arxiv.org/abs/2205.05053)
+[*A high throughput generative vector autoregression model for stochastic synapses*](https://www.frontiersin.org/journals/neuroscience/articles/10.3389/fnins.2022.941753/full)
 
-*Synaptogen: A cross-domain generative device model for large-scale neuromorphic circuit design*: [arXiv](https://arxiv.arg/abs/)
+[*Synaptogen: A cross-domain generative device model for large-scale neuromorphic circuit design*](https://arxiv.org/abs/)
 
 ## Code authors
 

@@ -1,6 +1,6 @@
 # Synaptogen.va
 
-This is the Verilog-A implementation of Synaptogen for use in Circuit Simulators (Cadence Virtuoso, etc.). 
+This is the Verilog-A implementation of Synaptogen for use in circuit simulators (Cadence Virtuoso, etc.). 
 
 Before use, 
 1)	generate a new Cell View and copy the .va script into the corresponding folder. 
@@ -10,4 +10,4 @@ Trained model parameters `muDtD`, `LDtD`, `GammaCoeff`, `VAR_L`, `VAR_An`, `HHRS
 
 In order to incorporate device-to-device variability, every device needs a unique random number as seed (parameter `Initialseed`) which has to be assigned in the schematic or during device definition in the netlist.
 
-The model carries an intrinsic step size control dependent on parameter `tcycle` (check lines 282 – 305) which adapts the number of simulated data point in the vicinity of SET and RESET transitions. 
+The model carries an intrinsic step size control dependent on parameter `tcycle` (check lines [282 – 305](Synaptogen.va#L282-L305)) which adapts the number of simulated data point in the vicinity of SET and RESET transitions. 
