@@ -15,3 +15,8 @@ The model is trained on measurement data and closely replicates
 It is currently implemented in
 - Julia for machine learning and general purpose programming (Synaptogen.jl)
 - Verilog-A for circuit-level simulations (Synaptogen.va)
+
+## Code authors
+
+- Tyler Hennen (Synaptogen.jl)
+- Leon Brackmann (Synaptogen.va)
