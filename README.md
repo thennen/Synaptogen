@@ -21,7 +21,7 @@ You can learn more about the model in the following publications:
 
 [*A high throughput generative vector autoregression model for stochastic synapses*](https://www.frontiersin.org/journals/neuroscience/articles/10.3389/fnins.2022.941753/full)
 
-[*Synaptogen: A cross-domain generative device model for large-scale neuromorphic circuit design*](https://arxiv.org/abs/)
+[*Synaptogen: A cross-domain generative device model for large-scale neuromorphic circuit design*](https://arxiv.org/abs/2404.06344)
 
 ## Code authors
 
