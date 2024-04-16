@@ -89,16 +89,18 @@ function CellParams(fp::String=default_param_fp; p::Int=10)
     the p you ask for should be less than the largest p in the parameter file
     if you choose a p not in the data file, you will get a truncated approximation
     """
+    # Matrices get loaded as arrays of arrays. Have to concatenate them.
+    matrix(arr_of_arr) = reduce(hcat, arr_of_arr)'
+    γ = Matrix{Float32}(matrix(json_params.γ))
+    nfeatures, γdeg = size(γ)
     function get_VAR_matrix(p::Int64=20)
         key_strings = [String(k) for k in keys(json_params)]
         available_orders = sort([parse(Int, split(k, "_")[2]) for k in key_strings if startswith(k, "VAR")])
         q = available_orders[findfirst(available_orders .>= p)]
         VAR_json_params = reduce(hcat, json_params["VAR_" * lpad(q, 3, "0")])'
-        VARcoefs = Matrix{Float32}(VAR_json_params[:, 1:(p+1)*4])
+        VARcoefs = Matrix{Float32}(VAR_json_params[:, 1:(p+1)*nfeatures])
         return VARcoefs
     end
-    # Matrices get loaded as arrays of arrays. Have to concatenate them.
-    matrix(arr_of_arr) = reduce(hcat, arr_of_arr)'
     Umax = Float32(json_params.Umax)     # The highest applied voltage in RESET direction during the experiment.
     U₀ = Float32(json_params.U₀)         # Part of the definition of "resistance"
     η = Float32(json_params.η)
@@ -113,8 +115,6 @@ function CellParams(fp::String=default_param_fp; p::Int=10)
     LLRSdeg = size(json_params.LLRS)[1]
     wk = Vector{Float32}(json_params.wk)
     K = size(wk)[1]
-    γ = Matrix{Float32}(matrix(json_params.γ))
-    nfeatures, γdeg = size(γ)
     # Turn these into 3d arrays because CuVector{CuVector} isn't a thing
     LDtD = reshape(matrix(json_params.LDtD), 2*nfeatures, 2*nfeatures, K)
     μDtD = matrix(json_params.μDtD)
@@ -349,7 +349,7 @@ end
 """
     VAR_sample!(c::CellArray)
 
-Draw the next VAR terms, updating the history matrix (Xhat)
+Draw the next VAR terms, updating the history matrix (c.Xhat)
 involves a shift operation for the subset of columns corresponding to drawVARMask == true
 """
 function VAR_sample!(c::CellArray)
@@ -359,22 +359,22 @@ function VAR_sample!(c::CellArray)
         randn!(view(c.Xhat, 1:nfeatures, :))
         mul!(c.x, VAR, c.Xhat) # caution: x is not accurate anymore where drawVARMask == false
         copy!(c.Xbuf, c.Xhat) # this is so we can use ifelse instead of working on non-contiguous slices, which is very slow
-        c.Xhat[5:end-4, :] .= ifelse.(c.drawVARMask', @view(c.Xbuf[9:end, :]), @view(c.Xbuf[5:end-4, :]))
-        c.Xhat[end-3:end, :] .= ifelse.(c.drawVARMask', c.x, @view(c.Xhat[end-3:end,:]))
+        c.Xhat[nfeatures+1:end-nfeatures, :] .= ifelse.(c.drawVARMask', @view(c.Xbuf[2*nfeatures+1:end, :]), @view(c.Xbuf[nfeatures+1:end-nfeatures, :]))
+        c.Xhat[end+1-nfeatures:end, :] .= ifelse.(c.drawVARMask', c.x, @view(c.Xhat[end + 1 - nfeatures:end,:]))
     end
 end
 
 
 """
-    r(I::AbstractVector{Float32}, V::AbstractVector{Float32}, HHRS::AbstractMatrix{Float32}, LLRS::AbstractMatrix{Float32})
+    r(I::AbstractVector{Float32}, U::AbstractVector{Float32}, HHRS::AbstractMatrix{Float32}, LLRS::AbstractMatrix{Float32})
 
-Return r such that (1-r) ⋅ LRSpoly + r ⋅ HHRSpoly intersects I,V.
+Return r such that (1-r) ⋅ LLRS + r ⋅ HHRS intersects I,U.
 Used for switching along transition curves.
 """
-function r(I::AbstractVector{Float32}, V::AbstractVector{Float32}, HHRS::AbstractMatrix{Float32}, LLRS::AbstractMatrix{Float32})
-    IHHRS_V = polyval(HHRS, V)
-    ILLRS_V = polyval(LLRS, V)
-    return @. (I - ILLRS_V) / (IHHRS_V - ILLRS_V)
+function r(I::AbstractVector{Float32}, U::AbstractVector{Float32}, HHRS::AbstractMatrix{Float32}, LLRS::AbstractMatrix{Float32})
+    IHHRS_U = polyval(HHRS, U)
+    ILLRS_U = polyval(LLRS, U)
+    return @. (I - ILLRS_U) / (IHHRS_U - ILLRS_U)
 end
 
 
@@ -425,18 +425,18 @@ Apply voltages from array U to the corresponding cell in the CellArray
 if U > UR or if U ≤ US, cell states will be modified
 """
 function applyVoltage!(c::CellArray, Ua::AbstractVector{<:Real})
-    (;Umax, G_HHRS, G_LLRS, HHRS, LLRS, η, γ)  = c.params
+    (;Umax, G_HHRS, G_LLRS, HHRS, LLRS, η, γ, nfeatures)  = c.params
 
     # this converts the elements to Float32 while keeping the vector type the same
     Ua = Base.convert(AbstractVector{Float32}, Ua)
 
     ### Create boolean masks for the different operations that may need to be applied
-    c.setMask .= .~c.inLRS .& (Ua .≤ US(c)) # not @. because US() doesn't broadcast
-    @. c.resetMask = ~c.inHRS & (Ua > c.UR)
+    c.setMask .= .!c.inLRS .& (Ua .≤ US(c)) # not @. because US() doesn't broadcast
+    @. c.resetMask = !c.inHRS & (Ua > c.UR)
     @. c.fullResetMask = c.resetMask & (Ua ≥ Umax)
     @. c.partialResetMask = c.resetMask & (Ua < Umax)
     @. c.drawVARMask = c.inLRS & c.resetMask
-    @. c.resetCoefsCalcMask = c.drawVARMask & ~c.fullResetMask
+    @. c.resetCoefsCalcMask = c.drawVARMask & !c.fullResetMask
 
     if any(c.setMask)
         c.r .= ifelse.(c.setMask, r.(LRS(c), G_HHRS, G_LLRS), c.r)
@@ -448,7 +448,7 @@ function applyVoltage!(c::CellArray, Ua::AbstractVector{<:Real})
     if any(c.drawVARMask)
         VAR_sample!(c)
         c.n .+= c.drawVARMask
-        @inbounds c.y .= Ψ(c.μ, c.σ, Γ(γ, c.Xhat[end-3:end, :]))
+        @inbounds c.y .= Ψ(c.μ, c.σ, Γ(γ, c.Xhat[end-nfeatures+1:end, :]))
     end
 
     if any(c.resetCoefsCalcMask)
@@ -475,7 +475,7 @@ function applyVoltage!(c::CellArray, Ua::AbstractVector{<:Real})
         c.r .= ifelse.(c.fullResetMask, r.(HRS(c), G_HHRS, G_LLRS), c.r)
     end
 
-    return
+    return c
 end
 
 
