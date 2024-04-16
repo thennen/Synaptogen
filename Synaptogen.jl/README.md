@@ -7,6 +7,8 @@ It runs on both CPUs and GPUs, and can easily handle millions of synaptic weight
 
 ## Installation
 
+This package is not yet registered. It can be installed by running
+
 ```julia
   import Pkg; Pkg.add(url="https://github.com/thennen/Synaptogen.git", subdir="Synaptogen.jl")
 ```
@@ -15,7 +17,7 @@ It runs on both CPUs and GPUs, and can easily handle millions of synaptic weight
 
 These basic examples do the following:
 - Initialize a million memory cells (in their high resistance states)
-- Apply a -2 V to each cell, putting them into their low resistance states
+- Apply -2 V to each cell, putting them into their low resistance states
 - Apply a random voltage to each cell
 - Make a current readout of all the cells (at a default of 0.2 V)
 
