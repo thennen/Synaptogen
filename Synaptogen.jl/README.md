@@ -26,7 +26,7 @@ These basic examples do the following:
 
 ```julia
 using Synaptogen
-M = 2^20
+M = 1024 * 1024
 cells = [Cell() for m in 1:M]
 
 applyVoltage!.(cells, -2)
@@ -45,7 +45,7 @@ row_currents = crossbar * col_voltages
 
 ```julia
 using Synaptogen, CUDA
-M = 2^20
+M = 1024 * 1024
 cells = CellArrayGPU(M)
 
 applyVoltage!(cells, -2)
