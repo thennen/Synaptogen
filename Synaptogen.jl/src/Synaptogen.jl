@@ -1,6 +1,6 @@
 module Synaptogen
 
-export applyVoltage!, Iread, Uread, HRS, LRS, UR, US, I,
+export applyVoltage!, Iread, Uread, HRS, LRS, UR, US, I, ADC,
        CellArray, CellArrayCPU, CellArrayGPU, Cell,
        CellParams, CellParams_from_artifact, StaticCellParams, defaultParams, defaultStaticParams
 

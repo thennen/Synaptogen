@@ -17,17 +17,17 @@ import json
 from functools import partial
 
 def array32(x):
-    return np.array(x, dtype=np.float32)
+    return np.array(x, dtype=float32)
 
 def zeros32(n):
-    return np.zeros(n, dtype=np.float32)
+    return np.zeros(n, dtype=float32)
 
 def empty32(n):
-    return np.empty(n, dtype=np.float32)
+    return np.empty(n, dtype=float32)
 
 rng = np.random.default_rng()
-randn = partial(rng.standard_normal, dtype=np.float32)
-rand = partial(rng.random, dtype=np.float32)
+randn = partial(rng.standard_normal, dtype=float32)
+rand = partial(rng.random, dtype=float32)
 
 Uread = float32(0.2)
 e = float32(1.602176634e-19)
@@ -103,6 +103,41 @@ class CellArray :
     resetCoefsCalcMask : np.ndarray
     drawVARMask : np.ndarray
     params : CellParams
+
+    def __len__(self):
+        return self.M
+
+    def __matmul__(self, v:np.ndarray):
+        """
+        Matrix-vector multiplication implemented as a crossbar readout.
+
+        CellArrays are always 1D.  But here it is assumed to represent a 2D matrix
+        formed by reshaping to the size compatible with the input voltage vector.
+
+        To be consistent with (column-major) matrix notation, the voltage vector is
+        applied to columns of the array, and the currents are read from the rows.
+        This is the transpose of how most crossbar circuits schematics are drawn.
+
+        Does not scale inputs or outputs (inputs are Volts, outputs are Amps)
+
+        All weights (conductances) are positive.  Negative weights are typically implemented 
+        by taking pairwise differences of rows.
+
+        Does not consider sneak paths or line resistance.
+
+        Does not digitize.  Use ADC() afterward for that.
+
+        Does not actually "apply" the voltages. So they should be small enough so that there's negligible chance of switching.
+        """
+        v = v.astype(float32, copy=False)
+        ncols = len(v)
+        assert self.M % ncols == 0
+        nrows = self.M // ncols
+
+        V_array = np.repeat(v, nrows)
+        I_array = Iread(self, V_array)
+
+        return np.sum(np.reshape(I_array, (nrows, ncols), order='F'), axis=1)
 
 
 def load_params(param_fp:str=default_param_fp, p:int=10):
@@ -236,7 +271,7 @@ def applyVoltage(c:CellArray, Ua):
     if U > UR or if U ≤ US, cell states will be modified
     """
     if type(Ua) is np.ndarray:
-        Ua = Ua.astype(float32)
+        Ua = Ua.astype(float32, copy=False)
     else:
         Ua = np.repeat(float32(Ua), c.M)
 
@@ -289,30 +324,38 @@ def applyVoltage(c:CellArray, Ua):
 
     return c
 
-def Iread(c:CellArray, U=Uread, nbits=4, Imin=1e-6, Imax=5e-5, BW=1e8):
+
+def Iread(c:CellArray, U=Uread, BW=1e8):
     """
     Return the current at Ureadout for the current cell state
     """
+    # Don't read out at exactly zero, because then we can't calculate Johnson noise
     if type(U) is np.ndarray:
-        U = U.astype(float32)
+        U = U.astype(float32, copy=False)
+        U[U == 0] = float32(1e-12)
     else:
         U = float32(U)
+        if U == 0: U = float32(1e-12)
 
-    Imin = float32(Imin)
-    Imax = float32(Imax)
     BW = float32(BW)
     Inoiseless = I(c, U)
     johnson = 4*kBT*BW*np.abs(Inoiseless/U)
     shot = 2*e*np.abs(Inoiseless)*BW
     σ_total = np.sqrt(johnson + shot)
-    Irange = Imax - Imin
-    nlevels = 2**nbits
-    q = Irange / nlevels
     randn(c.M, out=c.Iread)
     c.Iread = Inoiseless + c.Iread * σ_total
-    c.Iread = np.clip(np.round((c.Iread - Imin) / q), 0, nlevels) * q + Imin
-
     return c.Iread
+
+
+def ADC(v:np.ndarray, vmin=1e-6, vmax=5e-5, nbits=4):
+    v = v.astype(float32, copy=False)
+    vmin = float32(vmin)
+    vmax = float32(vmax)
+    Irange = vmax - vmin
+    top = float32(2**nbits - 1)
+    q = Irange / top
+    indices = np.floor(np.minimum((v - vmin) / q, top) + float32(0.5))
+    return vmin + q * indices
 
 
 def test(M=2**5, N=2**6):

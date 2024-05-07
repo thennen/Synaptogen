@@ -16,7 +16,8 @@ Drawbacks:
 using StaticArrays: SVector, SMatrix, MVector, MMatrix
 using Random # rand, randn
 using Printf
-
+import Base: *
+using Base.Threads
 
 """
 Parameter structure using StaticArrays.
@@ -309,29 +310,86 @@ function applyVoltage!(c::Cell{O, P}, Ua::Real) where {O, P}
     return c
 end
 
-"""
-    Iread(c::Cell, U::Real=Uread; nbits::Int=4, Imin::Float=1f-6, Imax::Float=1f-5, BW::Float=1f8)
 
-Simulated current measurement of a Cell including noise and ADC
 """
-function Iread(c::Cell, U::Real=Uread; nbits::Int=4, Imin::AbstractFloat=1f-6, Imax::AbstractFloat=5f-5, BW::AbstractFloat=1f8)
+    Iread(c::Cell, U::Real=Uread; BW::AbstractFloat=1f8)
+
+Simulated current measurement of a Cell including noise
+"""
+function Iread(c::Cell, U::Real=Uread; BW::Real=1f8)
     U = convert(Float32, U)
-    Imin = convert(Float32, Imin)
-    Imax = convert(Float32, Imax)
+    # Don't read out at exactly zero, because then we can't calculate Johnson noise
+    if U == 0f0
+        U = 1f-12
+    end
     BW = convert(Float32, BW)
     Inoiseless = I(c, U)
     # Approximation of the thermodynamic noise
     johnson = abs(4*kBT*BW*Inoiseless/U)
     shot = abs(2*e*Inoiseless*BW)
-    # Digitization noise
-    Irange = Imax - Imin
-    nlevels = 2^nbits
-    q = Irange / nlevels
-    #ADC = q^2 / 12
     # Sample from total noise distribution
-    #σ_total = √(johnson + shot + ADC)
     σ_total = √(johnson + shot)
     Iwithnoise = Inoiseless + randn(Float32) * σ_total
-    # Return nearest quantization level?
-    return clamp(round((Iwithnoise - Imin) / q), 0, nlevels) * q + Imin
+    return Iwithnoise
+end
+
+
+"""
+    ADC(v; vmin=1f-6, vmax=5f-5, nbits::Int=4)
+
+A mid-tread, uniform quantizer.
+Returns the reconstruction value, not the quantization index.
+"""
+function ADC(v; vmin=1f-6, vmax=5f-5, nbits::Int=4)
+    v = convert(Float32, v)
+    vmin = convert(Float32, vmin)
+    vmax = convert(Float32, vmax)
+    Irange = vmax - vmin
+    nlevels = 2^nbits
+    q = Irange / (nlevels - 1)
+    index = floor(Int, min((v - vmin)/q, nlevels - 1) + 0.5f0)
+    return vmin + q * index
+end
+
+
+
+"""
+    *(cells::AbstractArray{<:Cell}, v::AbstractVector)
+
+Matrix-vector multiplication implemented as a crossbar readout.
+
+To be consistent with (column-major) matrix notation, the voltage vector is
+applied to columns of the array, and the currents are read from the rows.
+This is the transpose of how most crossbar circuits schematics are drawn.
+
+Does not scale inputs or outputs (inputs are Volts, outputs are Amps)
+
+All weights (conductances) are positive.  Negative weights are typically implemented 
+by taking pairwise differences of rows.
+
+Does not consider sneak paths or line resistance.
+
+Does not digitize.  Use ADC() afterward for that.
+
+Does not actually "apply" the voltages. So they should be small enough so that there's negligible chance of switching.
+
+If "cells" is a 1d vector, it is reshaped so that the dimensions are compatible.
+"""
+function *(cells::Array{<:Cell}, v::AbstractVector)
+    v = convert(Vector{Float32}, v)
+    ncols = length(v)
+    M = length(cells)
+    @assert M % ncols == 0
+    nrows = M ÷ ncols
+    if ndims(cells) == 1
+        cells = reshape(cells, nrows, ncols)
+    end
+
+    out = Vector{Float32}(undef, nrows)
+
+    @threads for i in 1:nrows
+        out[i] = sum(Iread.(cells[i, :], v))
+    end
+
+    return out
 end
