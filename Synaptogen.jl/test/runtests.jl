@@ -10,6 +10,7 @@ using CUDA
     Therefore I am just using global variables to store the cells.  Maybe there's a better way.
     """
     M = 2^14
+    cbsize = Int(√M)
     (;Umax, p) = defaultParams
     @info "Testing arrays of $M cells with default parameters. VAR order p=$p.\n"
 
@@ -17,7 +18,7 @@ using CUDA
 
     ### Vectorized code (struct of arrays)
     ## CPU
-    @testset "Struct of CPU arrays" begin
+    @testset "Struct of CPU arrays (vectorized)" begin
         # initialize cells
         @info "Initializing struct of CPU arrays"
         @test (global cellsCPU; cellsCPU = CellArrayCPU(M); all(cellsCPU.inHRS))
@@ -39,6 +40,12 @@ using CUDA
             for r in eachcol(R)
                 applyVoltage!(cellsCPU, r)
             end
+            true
+        end
+        @info "Reading out array as a $cbsize × $cbsize crossbar (VMM)"
+        @test begin
+            col_voltages = randn(Float32, cbsize) * .2f0
+            row_currents = cellsCPU * col_voltages
             true
         end
     end
@@ -70,6 +77,12 @@ using CUDA
                 end
                 true
             end
+            @info "Reading out array as a $cbsize × $cbsize crossbar (VMM)"
+            @test begin
+                col_voltages = CUDA.randn(cbsize) * .2f0
+                row_currents = cellsGPU * col_voltages
+                true
+            end
         else
             @warn "CUDA is not functional, cannot test."
         end
@@ -99,6 +112,12 @@ using CUDA
             for r in eachcol(R)
                 applyVoltage!.(cells, r)
             end
+            true
+        end
+        @info "Reading out array as a $cbsize × $cbsize crossbar (VMM)"
+        @test begin
+            col_voltages = randn(Float32, cbsize) * .2f0
+            row_currents = cells * col_voltages
             true
         end
     end

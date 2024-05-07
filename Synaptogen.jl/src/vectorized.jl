@@ -17,11 +17,12 @@ using Random # randn!
 using LinearAlgebra # mul!
 using CUDA
 using LazyArtifacts
-
 import JSON3
+import Base: *
 
 ########## Define our CPU and GPU types
 
+# Actually more like a CellVector. Not designed to be 2D (yet..)
 abstract type CellArray end
 
 
@@ -495,24 +496,22 @@ applyVoltage!(c::CellArrayGPU, Ua::Real) = applyVoltage!(c, CUDA.fill(Float32(Ua
 
 
 """
-    Iread(c::CellArray, U::AbstractVector; nbits::Int=4, Imin=1f-6, Imax=1f-5, BW=1f8)
+    Iread(c::CellArray, U::AbstractVector; BW::AbstractFloat=1f8)
 
 Simulated current measurement of all cells in a CellArray including noise and ADC
 (actually mutates c by updating c.Iread..)
 """
-function Iread(c::CellArray, U::AbstractVector; nbits::Int=4, Imin::AbstractFloat=1f-6, Imax::AbstractFloat=5f-5, BW::AbstractFloat=1f8)
+function Iread(c::CellArray, U::AbstractVector; BW::AbstractFloat=1f8)
     U = Base.convert(AbstractVector{Float32}, U)
-    Imin = convert(Float32, Imin)
-    Imax = convert(Float32, Imax)
+    # Don't read out at exactly zero, because then we can't calculate Johnson noise
+    @. U = ifelse(U == 0, 1f-12, U)
     BW = convert(Float32, BW)
     randn!(c.Iread) # Iread exists so we can use randn! instead of randn.
     Inoiseless = I(c, U)
-    σ_total = @. √(4 * kBT * BW * Inoiseless / U + abs(2 * e * Inoiseless * BW))
-    Irange = Imax - Imin
-    nlevels = 2^nbits
-    q = Irange / nlevels
+    johnson = @. abs(4*kBT*BW*Inoiseless/U)
+    shot = @. abs(2*e*Inoiseless*BW)
+    σ_total = @. √(johnson + shot)
     @. c.Iread = Inoiseless + c.Iread * σ_total 
-    @. c.Iread = clamp(round((c.Iread - Imin) / q), 0, nlevels) * q + Imin
     return c.Iread
 end
 
@@ -525,5 +524,60 @@ Simulated current measurement of all cells in a CellArray at the same voltage U 
 function Iread(c::CellArray, U::Real=Uread; nbits=4, Imin=1f-6, Imax=5f-5, BW=1f8)
     U_array = similar(c.Iread)
     U_array .= U
-    return Iread(c, U_array, nbits=nbits, Imin=Imin, Imax=Imax, BW=BW)
+    return Iread(c, U_array, BW=BW)
+end
+
+
+"""
+    ADC(v::AbstractArray; vmin=1f-6, vmax=5f-5, nbits::Int=4)
+
+A mid-tread, uniform quantizer.
+Returns the reconstruction value, not the quantization index.
+"""
+function ADC(v::AbstractArray; vmin=1f-6, vmax=5f-5, nbits::Int=4)
+    v = convert(AbstractVector{Float32}, v)
+    vmin = convert(Float32, vmin)
+    vmax = convert(Float32, vmax)
+    Irange = vmax - vmin
+    nlevels = 2^nbits
+    q = Irange / (nlevels - 1)
+    indices = @. floor(Int, min((v - vmin)/q, nlevels - 1) + 0.5f0)
+    return @. vmin + q * indices
+end
+
+
+"""
+    *(cells::CellArray, v::AbstractVector)
+
+Matrix-vector multiplication implemented as a crossbar readout.
+
+CellArrays are always 1D.  But here it is assumed to represent a 2D matrix
+formed by reshaping to the size compatible with the input voltage vector.
+
+To be consistent with (column-major) matrix notation, the voltage vector is
+applied to columns of the array, and the currents are read from the rows.
+This is the transpose of how most crossbar circuits schematics are drawn.
+
+Does not scale inputs or outputs (inputs are Volts, outputs are Amps)
+
+All weights (conductances) are positive.  Negative weights are typically implemented 
+by taking pairwise differences of rows.
+
+Does not consider sneak paths or line resistance.
+
+Does not digitize.  Use ADC() afterward for that.
+
+Does not actually "apply" the voltages. So they should be small enough so that there's negligible chance of switching.
+"""
+function *(cells::CellArray, v::AbstractVector)
+    v = convert(AbstractVector{Float32}, v)
+    ncols = length(v)
+    M = length(cells)
+    @assert M % ncols == 0
+    nrows = M ÷ ncols
+
+    V_array = repeat(v, inner=nrows)
+    I_array = Iread(cells, V_array)
+
+    return vec(sum(reshape(I_array, nrows, ncols); dims=2))
 end
