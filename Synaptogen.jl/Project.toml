@@ -21,3 +21,9 @@ PyPlot = "d330b81b-6aea-500a-939a-2ce795aea3ee"
 
 [targets]
 test = ["Test"]
+
+[compat]
+julia = "1.10"
+CUDA = "5.2"
+JSON3 = "1.14"
+StaticArrays = "1.9"
