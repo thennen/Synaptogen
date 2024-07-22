@@ -1,7 +1,7 @@
 name = "Synaptogen"
 uuid = "e56353f7-4373-4545-acba-b4d938c7539a"
 authors = ["Tyler Hennen <tyler@hennen.us>"]
-version = "0.1.0"
+version = "0.2.0"
 
 [deps]
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
