@@ -5,7 +5,6 @@ version = "0.1.0"
 
 [deps]
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
-DSP = "717857b8-e6f2-59f4-9121-6e50c889abd2"
 JSON3 = "0f8b85d8-7281-11e9-16c2-39a750bddbf1"
 LazyArtifacts = "4af54fe1-eca0-43a8-85a7-787d91b784e3"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
@@ -14,10 +13,11 @@ Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
 [extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
 Git = "d7ba0133-e1db-5d97-8f8c-041e4b3a1eb2"
 PyPlot = "d330b81b-6aea-500a-939a-2ce795aea3ee"
-Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
 
 [targets]
 test = ["Test"]
