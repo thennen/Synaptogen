@@ -2,7 +2,7 @@
 
 # Synaptogen
 
-This is a fast generative model for stochastic memory cells.  It helps you determine how real-world devices would perform in large-scale circuits, for example when used as resistive weights in a neuromorphic system.
+This is a fast generative model for stochastic memory cells.  It helps determine how real-world devices would perform in large-scale circuits, for example when used as resistive weights in a neuromorphic system.
 
 The model is trained on measurement data and closely replicates
 - cross-correlations and history dependence of switching parameters
@@ -22,7 +22,7 @@ You can learn more about the model in the following publications:
 
 [*A high throughput generative vector autoregression model for stochastic synapses*](https://www.frontiersin.org/journals/neuroscience/articles/10.3389/fnins.2022.941753/full)
 
-[*Synaptogen: A cross-domain generative device model for large-scale neuromorphic circuit design*](https://arxiv.org/abs/2404.06344)
+[*Synaptogen: A cross-domain generative device model for large-scale neuromorphic circuit design*](https://doi.org/10.1109/TED.2024.3427616)
 
 ## Code authors
 
