@@ -7,10 +7,8 @@ It runs on both CPUs and GPUs, and can easily handle millions of synaptic weight
 
 ## Installation
 
-This package is not yet registered. It can be installed by running
-
 ```julia
-  import Pkg; Pkg.add(url="https://github.com/thennen/Synaptogen.git", subdir="Synaptogen.jl")
+  import Pkg; Pkg.add("Synaptogen")
 ```
 
 ## Examples
