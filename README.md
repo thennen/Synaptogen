@@ -1,6 +1,17 @@
-[![DOI](https://zenodo.org/badge/619079250.svg)](https://zenodo.org/doi/10.5281/zenodo.10942560)
+<h1 style="font-size: 48px">
+<table style="margin-bottom: 0;">
+  <tr>
+    <td>
+      <img src="logo.png" alt="Logo" width="120"/>
+    </td>
+    <td>
+     Synaptogen
+    </td>
+  </tr>
+</table>
+</h1>
 
-# Synaptogen
+[![DOI](https://zenodo.org/badge/619079250.svg)](https://zenodo.org/doi/10.5281/zenodo.10942560)
 
 This is a fast generative model for stochastic memory cells.  It helps determine how real-world devices would perform in large-scale circuits, for example when used as resistive weights in a neuromorphic system.
 
