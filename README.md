@@ -1,5 +1,5 @@
 <h1 style="font-size: 48px">
-<table style="margin-bottom: 0;">
+<table style="margin-left: auto; margin-right: auto;margin-bottom: 0;border: none;">
   <tr>
     <td>
       <img src="logo.png" alt="Logo" width="120"/>
