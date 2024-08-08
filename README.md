@@ -1,14 +1,8 @@
-<h1 style="font-size: 48px">
-<table style="margin-left: auto; margin-right: auto;margin-bottom: 0;border: none;">
-  <tr>
-    <td>
-      <img src="logo.png" width="120"/>
-    </td>
-    <td>
-     Synaptogen
-    </td>
-  </tr>
-</table>
+<h1 style="font-size:40px">
+  <div style="display: flex; justify-content: center; align-items: center;">
+    <img src="logo.png" alt="Alt text for image" style="width: 100px; height: auto; margin-right: 10px;">
+    Synaptogen
+  </div>
 </h1>
 
 [![DOI](https://zenodo.org/badge/619079250.svg)](https://zenodo.org/doi/10.5281/zenodo.10942560)
