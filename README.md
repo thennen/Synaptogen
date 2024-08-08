@@ -2,7 +2,7 @@
 <table style="margin-left: auto; margin-right: auto;margin-bottom: 0;border: none;">
   <tr>
     <td>
-      <img src="logo.png" alt="Logo" width="120"/>
+      <img src="logo.png" width="120"/>
     </td>
     <td>
      Synaptogen
