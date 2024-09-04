@@ -17,9 +17,9 @@ The model is trained on measurement data and closely replicates
 
 
 It is currently implemented in
-- Julia for machine learning and general purpose programming (Synaptogen.jl)
-- Python (NumPy) (Synaptogen.py)
-- Verilog-A for circuit-level simulations (Synaptogen.va)
+- Julia for machine learning and general purpose programming ([Synaptogen.jl](Synaptogen.jl))
+- Python (NumPy) ([Synaptogen.py](Synaptogen.py))
+- Verilog-A for circuit-level simulations ([Synaptogen.va](Synaptogen.va))
 
 ## Publications
 
