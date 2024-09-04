@@ -1,6 +1,6 @@
 <h1 style="font-size:40px">
   <div style="display: flex; justify-content: center; align-items: center;">
-    <img src="logo.png" alt="Alt text for image" style="width: 100px; height: auto; margin-right: 10px;">
+    <img src="logo.png" alt="Alt text for image" style="width: 180px; height: auto; margin-right: 10px;"><br>
     Synaptogen
   </div>
 </h1>
