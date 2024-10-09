@@ -21,6 +21,8 @@ It is currently implemented in
 - Python (NumPy) ([Synaptogen.py](Synaptogen.py))
 - Verilog-A for circuit-level simulations ([Synaptogen.va](Synaptogen.va))
 
+You can check the respective subdirectories for usage examples.
+
 ## Publications
 
 You can learn more about the model in the following publications:
