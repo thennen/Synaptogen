@@ -33,6 +33,6 @@ applyVoltage(cells, voltages)
 
 I = Iread(cells)
 
-col_voltages = np.random.randn(2**5) * .2
+col_voltages = np.random.randn(1024) * .2
 row_currents = cells @ col_voltages
 ```
