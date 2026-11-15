@@ -1,68 +1,120 @@
-<h1 style="font-size:40px">
-  <div style="display: flex; justify-content: center; align-items: center;">
-    <img src="logo.png" alt="Alt text for image" style="width: 180px; height: auto; margin-right: 10px;"><br>
-    Synaptogen
-  </div>
-</h1>
+<p align="center">
+  <img src="logo.png" alt="Synaptogen logo" width="180">
+</p>
+
+# Synaptogen
 
 [![DOI](https://zenodo.org/badge/619079250.svg)](https://zenodo.org/doi/10.5281/zenodo.10942560)
 
-Synaptogen is a generative model for creating fast and statistically accurate simulations of resistive memory devices (like ReRAM). It's built to solve a major challenge in designing large-scale neuromorphic systems: how do you predict the behavior of millions of imperfect, real-world components — from high-level algorithm exploration down to detailed circuit verification — without waiting days for a single simulation?
+Synaptogen is a model of resistive switching memory cells (ReRAM) that reproduces the variability of real devices and is fast enough to simulate millions of them at once. It is meant for designing neuromorphic and in-memory computing hardware. Instead of modeling the switching physics, it is trained on electrical measurements and generates virtual devices with the same statistics as the measured ones.
 
-The model learns the complex statistical "personality" of real hardware from extensive measurement data and then generates virtual devices that can be seamlessly used in both machine learning frameworks and industry-standard circuit simulators.
+Device models with realistic variability are usually too slow for large arrays. Synaptogen's Julia version runs on CPU or GPU and has been used to simulate over 10^9 cells, and its Verilog-A version is 10x to 10,000x faster than a variability-aware physics-based compact model.
 
+Because the Julia/Python and Verilog-A versions are the same model, algorithm-level studies and circuit simulations can use consistent device behavior.
 
-## Why Use Synaptogen?
+The model is described in [Hennen et al. (2024)](https://doi.org/10.1109/TED.2024.3427616); see [Citing Synaptogen](#citing-synaptogen).
 
-### 🔗 Cross-Domain Modeling
+## What it reproduces
 
-Most device models live in only one domain, but Synaptogen bridges the gap between machine learning research and analog circuit design.
+A simulated cell is cycled between a high resistance state (HRS) and a low resistance state (LRS). Each cycle is described by four quantities: the HRS resistance, the SET voltage, the LRS resistance, and the RESET voltage. The model generates sequences of these that match the measurements in:
 
-* **High-Level (Julia/Python):** Perfect for massive-scale research. You can explore new neuromorphic architectures and training algorithms on arrays of **over a billion cells**.
-* **Circuit-Level (Verilog-A):** Drop the same statistically accurate model into your preferred analog simulator (e.g., Cadence Spectre) to validate circuit performance and timing with hardware realism.
+- their cycle-to-cycle distributions, including non-normal and asymmetric shapes
+- the correlations between the four quantities and their dependence on previous cycles
+- device-to-device variation in each cell's average behavior and in how much it fluctuates, including a small population of outlier devices
+- the nonlinear, asymmetric I-V curves of each state, and intermediate resistance states reached by partial RESET
 
-This dual approach allows you to follow a complete design workflow, from initial concept in a high-level language to final hardware verification at the circuit level, all using a consistent and realistic device model.
+In the Julia and Python versions, simulated current readouts also include Johnson and shot noise.
 
-### 🚀 Blazing Fast Performance
+## How it works
 
-Synaptogen is built for speed across both domains.
+The included parameters were trained on 6000 switching cycles from each of 512 devices in an integrated 1T1R array (TiN/HfO2/Ti, 130 nm CMOS).
 
-* **On GPUs/CPUs:** The high-level implementation is heavily parallelized, achieving throughputs exceeding *100 million weight updates per second*. This is faster than the pixel rate of a 4K video stream at 30 fps. Read operations are nearly an order of magnitude faster still.
-* **In Circuit Simulators:** The Verilog-A model operates *10x to 10,000x faster* than other variability-aware compact models, enabling simulations of large crossbar arrays (256x256 for writing, 1024x1024 for reading) that were previously intractable.
+Training:
 
-### 📊 Unmatched Statistical Realism
+1. Extract the four features from every measured I-V cycle.
+2. Normalize them: first standardize each device by its own mean and standard deviation, then apply a nonlinear quantile transform per feature so the result is close to standard normal.
+3. Fit a vector autoregressive process, VAR(p), to the normalized sequences. This captures the cross-correlations and the dependence on the previous p cycles.
+4. Fit a three-component Gaussian mixture model to the per-device means and standard deviations. One component describes a defect mode that appears in about 4% of the measured devices.
 
-Synaptogen doesn't just simulate ideal components; it captures the complex, stochastic nature of real hardware.
-It is trained on high-quality datasets from fabricated device arrays. The model accurately reproduces the key sources of randomness that affect device performance:
+Generation runs this in reverse. Each new cell draws its means and standard deviations from the mixture model, runs its own VAR process, and the outputs are mapped back through the inverse transforms. The current through a cell is a linear combination of two fixed polynomials, one for the HRS limit and one for the LRS limit, weighted by a state variable between 0 and 1. SET is abrupt once the voltage passes the SET threshold; RESET moves the state gradually toward the next HRS value as the voltage increases past the RESET threshold.
 
-* **Cycle-to-Cycle (C2C)** variability and history dependence within a single device.
-* **Device-to-Device (D2D)** variability across thousands of devices on a chip.
-* **Cross-correlations** between all switching parameters (e.g. resistance states and switching voltages).
-* **Precise distribution shapes** are reproduced using quantile transformations. This is not limited to simple Gaussian or log-normal assumptions, ensuring the generated data looks just like the measurements.
-* **Statistical abnormalities** e.g. caused by defective devices are captured using a Gaussian Mixture Model, learning the signature of outlier device populations from the training data. This is critical for predicting real-world system performance where a few bad cells can have a large impact.
-* **Asymmetric, non-linear *I-V* characteristics** and gradual state transitions are reproduced by fitting them to the measurement data.
+Generation and readout use only polynomial evaluation and small matrix multiplications, with no differential equations to solve. This is why the model is fast and parallelizes well across many cells.
+
+## Performance
+
+Benchmarks from the 2024 paper (Verilog-A version in Cadence Spectre):
+
+- Compared to the JART v1b variability-aware compact model: over 100x faster for independent devices (about 200x for writes, up to 6000x for reads), 10x to 100x faster for crossbars up to 64x64, and 100x to 10,000x faster for larger crossbars.
+- 10x to 100x faster than a simple deterministic linear ion drift model with no variability.
+- Programming a 256x256 crossbar and reading a 1024x1024 crossbar, both with lead resistance, were feasible. JART did not finish at these sizes.
+
+The Julia version avoids transient simulation entirely and runs vectorized on CPU or GPU. It is more than three orders of magnitude faster than the Verilog-A version for reads and more than six for writes, and was used to simulate over 10^9 cells in the 2022 paper.
+
+## Limitations
+
+- The model has no internal time. A cell's state depends only on the sequence of voltages applied to it. The training data were measured with 1 ms triangle sweeps (about 7 kV/s), and any applied voltage is treated as equivalent to a ramp to that voltage at this rate.
+- Repeated pulses of the same amplitude do not have a cumulative effect. Intermediate states are set by the amplitude of a single voltage in the RESET range.
+- The included parameters describe one device technology. The method should apply to other memory types, but this repository contains only the generative model and trained parameters, not the training code.
 
 ## Implementations
 
-The model is currently available in three languages:
+- [Synaptogen.jl](Synaptogen.jl): Julia, CPU and GPU (CUDA). The fastest version.
+- [Synaptogen.py](Synaptogen.py): Python/NumPy translation of the Julia code. Considerably slower.
+- [Synaptogen.va](Synaptogen.va): Verilog-A for circuit simulators such as Cadence Spectre.
 
-* **Julia**: For high-performance scientific computing and machine learning research. ([Synaptogen.jl](Synaptogen.jl))
-* **Python**: For easy integration with the popular NumPy/SciPy ecosystem. ([Synaptogen.py](Synaptogen.py))
-* **Verilog-A**: For use in standard analog circuit simulators like Cadence Spectre. ([Synaptogen.va](Synaptogen.va))
+Installation and examples are in each subdirectory. A minimal Julia example:
 
-Check the respective subdirectories for examples and instructions on how to get started.
+```julia
+using Synaptogen
+M = 1024 * 1024
+cells = CellArrayCPU(M)            # M cells, initialized in HRS
 
+applyVoltage!(cells, -2)           # SET all cells to LRS
+applyVoltage!(cells, 0.5 .+ rand(M))   # partial RESET to random states
 
-## Learn More & Cite Us
+I = Iread(cells)                   # read each cell at 0.2 V, with noise
+```
 
-You can learn more about the model's architecture and performance in our publications (open access!). If you use Synaptogen in your research, please cite our work!
+## Citing Synaptogen
 
-* [*Synaptogen: A cross-domain generative device model for large-scale neuromorphic circuit design*](https://doi.org/10.1109/TED.2024.3427616). Hennen, T. et al. (2024). *IEEE Transactions on Electron Devices*.
+If you use Synaptogen in published work, please cite the papers that describe the model:
 
-* [*A high throughput generative vector autoregression model for stochastic synapses*](https://doi.org/10.3389/fnins.2022.941753). Hennen, T. et al. (2022). *Frontiers in Neuroscience*, 16, 941753.
+- T. Hennen et al., "Synaptogen: A cross-domain generative device model for large-scale neuromorphic circuit design," *IEEE Transactions on Electron Devices*, vol. 71, no. 9, pp. 5345-5353, 2024. [doi:10.1109/TED.2024.3427616](https://doi.org/10.1109/TED.2024.3427616)
+- T. Hennen et al., "A high throughput generative vector autoregression model for stochastic synapses," *Frontiers in Neuroscience*, vol. 16, 941753, 2022. [doi:10.3389/fnins.2022.941753](https://doi.org/10.3389/fnins.2022.941753)
 
+Both are open access. This applies also when using Synaptogen through another package built on it.
 
-## Code Authors
+```bibtex
+@article{hennen2024synaptogen,
+  author  = {Hennen, Tyler and Brackmann, Leon and Ziegler, Tobias and Siegel, Sebastian and Menzel, Stephan and Waser, Rainer and Wouters, Dirk J. and Bedau, Daniel},
+  title   = {Synaptogen: A Cross-Domain Generative Device Model for Large-Scale Neuromorphic Circuit Design},
+  journal = {IEEE Transactions on Electron Devices},
+  volume  = {71},
+  number  = {9},
+  pages   = {5345--5353},
+  year    = {2024},
+  doi     = {10.1109/TED.2024.3427616}
+}
 
-* **Tyler Hennen** (Synaptogen.jl & Synaptogen.py)
-* **Leon Brackmann** (Synaptogen.va)
+@article{hennen2022generative,
+  author  = {Hennen, Tyler and Elias, Alexander and Nodin, Jean-Fran{\c{c}}ois and Molas, Gabriel and Waser, Rainer and Wouters, Dirk J. and Bedau, Daniel},
+  title   = {A High Throughput Generative Vector Autoregression Model for Stochastic Synapses},
+  journal = {Frontiers in Neuroscience},
+  volume  = {16},
+  pages   = {941753},
+  year    = {2022},
+  doi     = {10.3389/fnins.2022.941753}
+}
+```
+
+## Use in other work
+
+Synaptogen has been used through the PyTorch interface [SynaptogenML](https://github.com/rwth-i6/SynaptogenML) to simulate speech recognition models running on analog in-memory computing hardware:
+
+- N. Rossenbach et al., *Proc. Interspeech 2025*, pp. 2560-2564. [doi:10.21437/Interspeech.2025-731](https://doi.org/10.21437/Interspeech.2025-731)
+- B. Hilmes et al., *Proc. Interspeech 2026*, pp. 1728-1733. [doi:10.21437/Interspeech.2026-683](https://doi.org/10.21437/Interspeech.2026-683)
+
+## Authors
+
+- Tyler Hennen (Synaptogen.jl, Synaptogen.py)
+- Leon Brackmann (Synaptogen.va)
